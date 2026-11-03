@@ -1,4 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tableau de bord étudiant
+
+Application Next.js avec authentification par session JWT, gestion des rôles et
+tableau de bord sécurisé.
+
+## Installation
+
+Prérequis : Node.js 20 ou plus récent.
+
+```bash
+npm install
+echo DATABASE_URL="file:./dev.db" > .env
+echo JWT_SECRET="remplacer-par-un-secret-aleatoire" >> .env
+npx prisma migrate dev
+npm run dev
+```
+
+Le fichier `.env` doit définir `DATABASE_URL` (par exemple `file:./dev.db`) et
+`JWT_SECRET` avec une valeur aléatoire longue. Ne commitez jamais ce fichier.
+Pour vérifier le code avant livraison :
+
+```bash
+npm run lint
+npm run build
+```
+
+## Modèle de données
+
+Le modèle Prisma `User` est défini dans
+[`prisma/schema.prisma`](./prisma/schema.prisma). Il contient `id`, `email`,
+`name`, `password`, `role` et `createdAt`. Le mot de passe est stocké sous
+forme de hash et n'est jamais inclus dans les sélections ou réponses API.
+L'application ne possède actuellement pas de champ de groupe ou de niveau :
+le graphique du dashboard représente donc la répartition des comptes par rôle
+pour les administrateurs.
+
+Les indicateurs du dashboard sont calculés dans
+[`src/lib/dashboard.ts`](./src/lib/dashboard.ts) avec Prisma : comptage des
+étudiants, comptage des créations des 30 derniers jours et cinq ajouts les
+plus récents. Les requêtes indépendantes sont exécutées avec `Promise.all`.
+
+## Accès par rôle
+
+La page `/dashboard` vérifie la session et le rôle côté serveur avant toute
+récupération de données. Une session absente ou invalide est redirigée vers
+`/login`. Le filtrage visuel n'est jamais utilisé comme mécanisme
+d'autorisation.
+
+| Périmètre | ADMIN | ENSEIGNANT | ETUDIANT |
+| --- | --- | --- | --- |
+| Indicateurs étudiants du périmètre autorisé | Oui | Oui, périmètre pédagogique | Son profil uniquement |
+| Liste des étudiants | Oui | Oui, données pédagogiques autorisées | Son propre compte uniquement |
+| Répartition des comptes par rôle | Oui | Non | Non |
+| Gestion complète | Oui | Non | Non |
+| Données sensibles (`password`) | Jamais exposées | Jamais exposées | Jamais exposées |
+
+Les routes `/api/students` et `/api/students/[id]` appliquent la même
+politique côté serveur. Les droits détaillés de création, modification et
+suppression sont décrits dans la matrice ci-dessous.
 
 ## Getting Started
 
@@ -99,4 +157,3 @@ que les données de l'étudiant connecté.
 curl -i http://localhost:3000/api/students \
   -b "session=COOKIE_ETUDIANT_A"
 ```
-

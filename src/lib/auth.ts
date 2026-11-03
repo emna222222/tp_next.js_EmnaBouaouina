@@ -3,6 +3,13 @@ import { getSession } from "@/lib/session";
 
 export const ROLES = ["ADMIN", "ENSEIGNANT", "ETUDIANT"] as const;
 export type Role = (typeof ROLES)[number];
+export type AuthenticatedUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  createdAt: Date;
+};
 
 function isRole(value: string): value is Role {
   return ROLES.includes(value as Role);
@@ -18,7 +25,9 @@ export class AuthorizationError extends Error {
   }
 }
 
-export async function requireRole(rolesAutorises: readonly Role[]) {
+export async function requireRole(
+  rolesAutorises: readonly Role[]
+): Promise<AuthenticatedUser> {
   const session = await getSession();
 
   if (!session) {
@@ -39,5 +48,8 @@ export async function requireRole(rolesAutorises: readonly Role[]) {
     throw new AuthorizationError(403, "Accès interdit");
   }
 
-  return user;
+  return {
+    ...user,
+    role: user.role,
+  };
 }
